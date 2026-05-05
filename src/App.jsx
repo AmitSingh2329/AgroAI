@@ -172,6 +172,18 @@ useEffect(() => {
   fetchUser();
 }, []);
 
+useEffect(() => {
+  const urls = [
+    "https://plant-disease-model-tp4o.onrender.com//health",
+    // "https://model2.onrender.com/health",
+    // "https://model3.onrender.com/health",
+  ];
+
+  urls.forEach((url) => {
+    axios.get(url, { timeout: 5000 }).catch(() => {});
+  });
+}, []);
+
   if (loading) {
     return <div className="p-6">Loading...</div>;
   }
