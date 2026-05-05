@@ -145,20 +145,32 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    axios
-      .get(`${import.meta.env.VITE_BACKEND_URL}/api/auth/profile`, {
-        withCredentials: true,
-      })
-      .then((res) => {
-        setUser(res.data);
-        setLoading(false);
-      })
-      .catch(() => {
+useEffect(() => {
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/profile`,
+        {
+          withCredentials: true,
+        }
+      );
+
+      setUser(res.data);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        // ✅ user not logged in → normal case
         setUser(null);
-        setLoading(false);
-      });
-  }, []);
+      } else {
+        // ❌ real error (server down, etc.)
+        console.error("Profile fetch error:", err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchUser();
+}, []);
 
   if (loading) {
     return <div className="p-6">Loading...</div>;
