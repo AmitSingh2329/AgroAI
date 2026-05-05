@@ -147,7 +147,7 @@ function App() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/auth/profile", {
+      .get(`${import.meta.env.VITE_BACKEND_URL}/api/auth/profile`, {
         withCredentials: true,
       })
       .then((res) => {
