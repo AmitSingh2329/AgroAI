@@ -175,7 +175,7 @@ useEffect(() => {
 useEffect(() => {
   const urls = [
     "https://plant-disease-model-tp4o.onrender.com/health",
-    // "https://model2.onrender.com/health",
+    "https://crop-recommendation-model-1-2qhp.onrender.com/health",
     // "https://model3.onrender.com/health",
   ];
 
