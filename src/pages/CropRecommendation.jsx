@@ -15,6 +15,7 @@ const CropRecommendation = () => {
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const resultRef = useRef(null);
 
@@ -28,7 +29,7 @@ const CropRecommendation = () => {
             lon: pos.coords.longitude,
           }));
         },
-        () => alert("Please enable location access")
+        () => alert("Please enable location access"),
       );
     }
   }, []);
@@ -37,63 +38,63 @@ const CropRecommendation = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
 
-    if (!form.lat || !form.lon) {
-      alert("📍 Location not ready. Please wait...");
-      return;
-    }
+  if (!form.lat || !form.lon) {
+    setError("Location not ready");
+    return;
+  }
 
-    setLoading(true);
+  if (!form.nitrogen || !form.phosphorus || !form.potassium || !form.ph) {
+    setError("Please fill all fields");
+    return;
+  }
 
-    try {
-      const payload = {
-        lat: form.lat,
-        lon: form.lon,
-        nitrogen: Number(form.nitrogen),
-        phosphorus: Number(form.phosphorus),
-        potassium: Number(form.potassium),
-        ph: Number(form.ph),
-        soil: form.soil,
-      };
+  setLoading(true);
 
-      const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/crop/predict`,
-        payload,
-        { withCredentials: true }
-      );
+  const safeNumber = (val) => (val === "" ? 0 : Number(val));
 
-      setResult(res.data);
+  try {
+    const payload = {
+      lat: form.lat,
+      lon: form.lon,
+      nitrogen: safeNumber(form.nitrogen),
+      phosphorus: safeNumber(form.phosphorus),
+      potassium: safeNumber(form.potassium),
+      ph: safeNumber(form.ph),
+      soil: form.soil,
+    };
 
-      // 🔥 SCROLL TO RESULT
-      setTimeout(() => {
-        resultRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 200);
+    const res = await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/crop/predict`,
+      payload,
+      { withCredentials: true, timeout: 8000 }
+    );
 
-    } catch (err) {
-      alert(err.response?.data?.error || "Prediction failed");
-    }
+    setResult(res.data);
 
+    setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 200);
+
+  } catch (err) {
+    setError(
+      err?.response?.data?.error ||
+      err?.message ||
+      "Prediction failed"
+    );
+  } finally {
     setLoading(false);
-  };
-
-  const getColor = (val) => {
-    if (val >= 75) return "from-green-400 to-green-600";
-    if (val >= 50) return "from-yellow-400 to-yellow-500";
-    return "from-red-400 to-red-600";
-  };
+  }
+};
 
   return (
     <div className="min-h-[calc(100vh-64px)] w-full px-4 py-6 bg-gradient-to-br from-green-900 via-black to-green-800 text-white">
-
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.15),transparent_70%)]"></div>
 
       <div className="relative z-10 max-w-6xl mx-auto">
-
         {/* HEADER */}
         <div className="text-center mb-8">
           <motion.h1
@@ -116,7 +117,6 @@ const CropRecommendation = () => {
           className="backdrop-blur-xl bg-white/10 p-6 rounded-3xl border border-white/20 mb-10"
         >
           <form className="grid md:grid-cols-2 gap-5" onSubmit={handleSubmit}>
-
             {[
               { name: "nitrogen", placeholder: "🌿 Nitrogen" },
               { name: "phosphorus", placeholder: "🧪 Phosphorus" },
@@ -136,13 +136,17 @@ const CropRecommendation = () => {
             <select
               name="soil"
               onChange={handleChange}
+              value={form.soil} 
               className="p-3 rounded-xl bg-white/80 text-black md:col-span-2"
             >
+              <option>Black Soil</option>
+              <option>Red Soil</option>
+              <option>Alluvial</option>
+              <option>Clay</option>
+              <option>Clay Loam</option>
               <option>Loamy</option>
               <option>Sandy</option>
-              <option>Clay</option>
-              <option>Black</option>
-              <option>Red</option>
+              <option>Sandy Loam</option>
             </select>
 
             <button
@@ -163,39 +167,49 @@ const CropRecommendation = () => {
             animate={{ opacity: 1, y: 0 }}
             className="grid md:grid-cols-3 gap-6"
           >
+            {/* BEST CROP */}
             <div className="bg-white/10 p-6 rounded-3xl border border-white/20 text-center">
               <h2 className="text-2xl text-green-300">🌾 Best Crop</h2>
               <p className="text-3xl font-bold mt-2">
-                {result.recommendedCrops.best_crop}
+                {result?.recommendedCrops?.best_crop || "N/A"}
               </p>
             </div>
 
+            {/* WEATHER */}
             <div className="bg-white/10 p-6 rounded-3xl border border-white/20">
               <h3 className="mb-2 text-lg">🌦 Weather</h3>
-              <p>🌡 {result.weather.temperature.toFixed(1)}°C</p>
-              <p>💧 {result.weather.humidity}%</p>
-              <p>🌧 {result.weather.rainfall}</p>
+              <p>🌡 {result?.weather?.temperature?.toFixed?.(1) ?? "--"}°C</p>
+              <p>💧 {result?.weather?.humidity ?? "--"}%</p>
+              <p>🌧 {result?.weather?.rainfall ?? "--"}</p>
             </div>
 
+            {/* TOP CROPS */}
             <div className="bg-white/10 p-6 rounded-3xl border border-white/20">
               <h3 className="mb-3">📊 Top Crops</h3>
-              {result.recommendedCrops.top_3_recommendations.map((crop, i) => {
-                const c = (crop.probability * 100).toFixed(1);
-                return (
-                  <div key={i} className="mb-3">
-                    <div className="flex justify-between">
-                      <span>{crop.crop}</span>
-                      <span>{c}%</span>
+
+              {Array.isArray(
+                result?.recommendedCrops?.top_3_recommendations,
+              ) ? (
+                result.recommendedCrops.top_3_recommendations.map((crop, i) => {
+                  const c = ((crop.probability || 0) * 100).toFixed(1);
+                  return (
+                    <div key={i} className="mb-3">
+                      <div className="flex justify-between">
+                        <span>{crop.crop || "Unknown"}</span>
+                        <span>{c}%</span>
+                      </div>
+                      <div className="bg-gray-700 h-2 mt-1 rounded">
+                        <div
+                          className="bg-green-400 h-2 rounded"
+                          style={{ width: `${c}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="bg-gray-700 h-2 mt-1 rounded">
-                      <div
-                        className="bg-green-400 h-2 rounded"
-                        style={{ width: `${c}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <p>No recommendations available</p>
+              )}
             </div>
           </motion.div>
         )}

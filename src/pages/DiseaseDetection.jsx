@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
 
@@ -10,15 +10,31 @@ const DiseaseDetection = () => {
   const [error, setError] = useState("");
 
   const handleImage = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    if (file) {
-      setImage(file);
-      setPreview(URL.createObjectURL(file));
-      setResult(null);
-      setError("");
+    if (!file.type.startsWith("image")) {
+      setError("Only image files are allowed");
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be less than 5MB");
+      return;
+    }
+
+    setImage(file);
+    setPreview(URL.createObjectURL(file));
+    setResult(null);
+    setError("");
   };
+
+  // ✅ Prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,17 +49,40 @@ const DiseaseDetection = () => {
       setError("");
 
       const formData = new FormData();
-      formData.append("image", image);
+      formData.append("file", image);
 
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/disease/detect`,
         formData,
-        { withCredentials: true }
+        {
+          withCredentials: true,
+          timeout: 60000,
+        }
       );
 
+      console.log("API:", res.data);
+
+      if (res.data.error) {
+        setError(res.data.error);
+        setResult(null);
+        return;
+      }
+
       setResult(res.data.result);
+
+      // ✅ Auto scroll to result
+      setTimeout(() => {
+        document
+          .getElementById("result-section")
+          ?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+
     } catch (err) {
-      setError("Detection failed. Try again.");
+      setError(
+        err?.response?.data?.error ||
+        err?.message ||
+        "Detection failed. Try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -58,11 +97,8 @@ const DiseaseDetection = () => {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 relative bg-gradient-to-br from-green-900 via-black to-green-800 text-white">
-
-      {/* subtle glow */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.15),transparent_70%)]"></div>
 
-      {/* Card */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -76,10 +112,7 @@ const DiseaseDetection = () => {
           Upload a plant leaf image to detect disease
         </p>
 
-        {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* Upload */}
           <motion.label
             whileHover={{ scale: 1.02 }}
             className="block border-2 border-dashed border-green-400/70 p-6 rounded-xl text-center cursor-pointer hover:bg-white/10 transition"
@@ -93,12 +126,9 @@ const DiseaseDetection = () => {
             <p className="text-white font-medium text-lg">
               📸 Upload Leaf Image
             </p>
-            <p className="text-xs text-gray-400 mt-1">
-              JPG, PNG supported
-            </p>
+            <p className="text-xs text-gray-400 mt-1">JPG, PNG supported</p>
           </motion.label>
 
-          {/* Preview */}
           {preview && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -121,36 +151,50 @@ const DiseaseDetection = () => {
             </motion.div>
           )}
 
-          {/* Button */}
           <motion.button
             whileHover={{ scale: 1.03 }}
             type="submit"
-            disabled={loading}
+            disabled={loading || !image}
             className="w-full bg-gradient-to-r from-green-600 to-green-800 text-white py-2 rounded-xl font-semibold shadow-lg disabled:bg-gray-500"
           >
-            {loading ? "Detecting..." : "Detect Disease"}
+            {loading ? "🔄 Detecting..." : "Detect Disease"}
           </motion.button>
         </form>
 
-        {/* Error */}
+        {/* ✅ Error UI */}
         {error && (
-          <p className="text-red-400 text-center mt-3">{error}</p>
+          <div className="mt-3 bg-red-500/20 border border-red-400/40 p-3 rounded text-center">
+            ❌ {error}
+          </div>
         )}
 
-        {/* Result */}
+        {/* ✅ Result Section */}
         {result && (
           <motion.div
+            id="result-section"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-5 p-5 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl text-center shadow-lg"
           >
             <h2 className="text-lg font-semibold text-green-300">
-              🌱 Disease Detected
+              🌱 Disease Detection Result
             </h2>
 
-            <p className="text-xl font-bold mt-2 text-white">
-              {result.disease}
-            </p>
+            <img
+              src={preview}
+              alt="leaf"
+              className="w-24 h-24 object-cover rounded-lg mx-auto mt-3 mb-3"
+            />
+
+            {result?.fallback ? (
+              <p className="text-yellow-400">
+                ⚠️ Please upload a clear plant leaf image
+              </p>
+            ) : (
+              <p className="text-xl font-bold mt-2 text-white">
+                {result?.disease || "Unknown"}
+              </p>
+            )}
 
             <button
               onClick={reset}

@@ -2,16 +2,17 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { AnimatePresence, motion } from "framer-motion";
-import Navbar from "./component/Navbar.jsx";
-import Home from "./pages/Home.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import CropRecommendation from "./pages/CropRecommendation.jsx";
-import ProtectedRoute from "./component/ProtectedRoute.jsx";
-import WeatherAlertsPage from "./pages/WeatherAlert.jsx";
-import DiseaseDetection from "./pages/DiseaseDetection.jsx";
-import YieldPrediction from "./pages/YieldPrediction.jsx";
+
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import CropRecommendation from "./pages/CropRecommendation";
+import Navbar from "./component/Navbar";
+import ProtectedRoute from "./component/ProtectedRoute";
+import WeatherAlertsPage from "./pages/WeatherAlert";
+import DiseaseDetection from "./pages/DiseaseDetection";
+import YieldPrediction from "./pages/YieldPrediction";
 
 /* 🔥 Page Wrapper (FINAL) */
 const PageWrapper = ({ children, noScroll = false }) => {
@@ -146,7 +147,7 @@ function App() {
 
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_URL}/api/auth/profile`, {
+      .get("http://localhost:5000/api/auth/profile", {
         withCredentials: true,
       })
       .then((res) => {
