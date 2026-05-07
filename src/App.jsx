@@ -180,7 +180,7 @@ useEffect(() => {
   ];
 
   urls.forEach((url) => {
-    axios.get(url, { timeout: 5000 }).catch(() => {});
+    fetch(url, { mode: "no-cors" }).catch(() => {});
   });
 }, []);
 
